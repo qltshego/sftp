@@ -1,0 +1,75 @@
+---
+
+- name: Create group for sftpusers
+  command: groupadd sftpusers
+  
+- name: Create group for sftpadmins
+  command: groupadd sftpadmins
+
+#Modify the the /etc/ssh/sshd_config file 
+
+#necessary to do this because the default sftp-server will require additional support files when used with ChrootDirectory. 
+- name: Configure sshd to not use default sftp-server
+  lineinfile: dest=/etc/ssh/sshd_config
+              state=present 
+              backrefs=yes 
+              regexp='^(.*)Subsystem sftp /usr/lib/openssh/sftp-server' 
+              line='#Subsystem sftp /usr/lib/openssh/sftp-server'      
+
+#internal sftp-server supports what default sftp-server provides and since it is in process i.e. part of SSH performance is better
+- name: Configure sshd to to use internal sftp-server
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp=''
+              insertafter=EOF
+              line='Subsystem sftp internal-sftp'  
+              state=present    
+
+
+#Force all users of sftpusers group to be jailed to %u where u is the user names
+#Force all users of sftpadmins group to be jailed to root of user directory
+#- name: Add config for sftpusers group and sftpadmins
+#  blockinfile:
+#    dest: /etc/ssh/sshd_config
+#    insertafter: EOF
+#    block: |   
+#        Match Group sftpusers
+#           ChrootDirectory /sftp/%u
+#           ForceCommand internal-sftp
+#           
+#        Match Group sftpadmins
+#           ChrootDirectory /sftp
+#           ForceCommand internal-sftp
+
+- name: Add config for sftpusers group and sftpadmins
+  lineinfile: 
+     dest=/etc/ssh/sshd_config
+     state=present
+     insertafter=EOF
+     line="{{ item.line }}"              
+    
+  with_items:
+     - { line: 'Match Group sftpadmins' }
+     - { line: '   ChrootDirectory /sftpadmins/%u' }
+     - { line: '    ForceCommand internal-sftp' }
+     - { line: '   ' }
+     - { line: 'Match Group sftpusers' }
+     - { line: '   ChrootDirectory /sftpusers/%u' }
+     - { line: '   ForceCommand internal-sftp' }
+
+
+
+
+#Create directory for admin and setup permissions 
+- name: Create directory for sftp admin users
+  file: path=/sftpadmins owner=root group=sftpadmins state=directory
+   
+
+#Create directory for sftp users and setup permissions 
+- name: Create directory for sftp users
+  file: path=/sftpusers owner=root group=sftpadmins state=directory
+                   
+#restart ssh service
+- name: Restart sshd
+  service: name=ssh state=restarted
+
+

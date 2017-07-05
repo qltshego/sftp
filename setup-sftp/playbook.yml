@@ -1,0 +1,6 @@
+---
+- name: Main playbook to setup sftp on Linux Servers 
+  hosts: all
+  sudo: yes
+  roles:
+  - setup-sftp

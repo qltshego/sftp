@@ -1,0 +1,8 @@
+---
+- name: Main playbook to add user accounts to sftp server
+  hosts: all
+  become: yes
+  become_method: sudo
+
+  roles:
+  - setup-sftp-user

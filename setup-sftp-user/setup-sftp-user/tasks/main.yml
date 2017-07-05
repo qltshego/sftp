@@ -1,0 +1,123 @@
+---
+
+#=========================START Admin Share Setup=====================================================
+
+#create user add add them to sftpusers group and ensure they can't ssh directly onto machine
+- name: Add admin user
+  command: useradd -g sftpadmins -d /sftpadmin/{{username}} -s /sbin/nologin {{username}}
+  when: 
+     - admin == "true"
+     - newuser == "true"
+
+- name: Add admin user to sftpusers group
+  command: usermod -a -G sftpusers {{username}}
+  when: 
+     - admin == "true"
+
+- name: Add existing admin user
+  command: usermod -g sftpadmins -d /sftpadmin/{{username}} -s /sbin/nologin {{username}}
+  when: 
+     - admin == "true"
+     - newuser == "false"
+
+#Create directory for admin and setup permissions 
+- name: Create directory for admin sftp user
+  file: path=/sftpadmins/{{username}} owner=root group=sftpadmins state=directory
+  when: admin == "true"     
+     
+#Create directory to mount sftp user shares on
+- name: Create folder to mount sftp user shares on
+  file: path=/sftpadmins/{{username}}/files owner={{username}} group=sftpadmins state=directory
+  when: 
+     - admin == "true"
+     
+- name: Create mount entry in ftab for sftp user folders
+  lineinfile: dest=/etc/fstab
+              insertafter=EOF
+              line='/sftpusers /sftpadmins/{{username}}/files none bind 0 0'  
+              state=present    
+  when: admin == "true"
+  
+- name: Mount user sftp folders
+  command: mount -a
+  when: admin == "true"
+
+    
+#==============================END Admin Share Setup====================================================     
+
+#==============================BEGIN User Share Setup===================================================     
+     
+     
+#create user add add them to sftpusers group and ensure they can't ssh directly onto machine
+- name: Add normal user
+  command: useradd -g sftpusers -d /sftpusers/{{username}} -s /sbin/nologin {{username}}
+  when: 
+     - admin == "false"
+     - newuser == "true"
+
+- name: Add existing normal user
+  command: usermod -g sftpusers -d /sftpusers -s /sbin/nologin {{username}}
+  when: 
+     - admin == "false"
+     - newuser == "false"
+
+
+#Create directory for user and setup permissions 
+- name: Create directory for sftp users
+  file: path=/sftpusers/{{username}} owner=root group=sftpadmins state=directory
+  when: admin == "false"
+  
+- name: Create directory for user files
+  file: path=/sftpusers/{{username}}/files owner={{username}} group=sftpusers state=directory
+  when: admin == "false"
+
+#sets up default permissions on directory to give group rwx, this is required so that admin users can access the files
+- name: Set default ACL to g=rwx
+  command: setfacl -d -m g::rwx /sftpusers/{{username}}/files
+  when: admin == "false"
+
+
+- name: Create out directory for user files
+  file: path=/sftpusers/{{username}}/files/in owner={{username}} group=sftpusers state=directory
+  when: admin == "false"
+
+- name: Create in directory for user files
+  file: path=/sftpusers/{{username}}/files/out owner={{username}} group=sftpusers state=directory
+  when: admin == "false"
+  
+- name: Mount user folder to be accessible to admins
+  command: mount -a
+  when: admin == "false"
+
+
+#==============================END User Share Setup=====================================================     
+
+
+#Create test and live folders for user and setup permissions 
+#- name: Create test directory for user files
+#  file: path=/sftpusers/{{username}}/files/test owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+  
+#- name: Create live directory for user files
+#  file: path=/sftpusers/{{username}}/files/live owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+
+
+#Create in and out folders in test directory for user and setup permissions 
+#- name: Create in folder in test directory for user files
+#  file: path=/sftpusers/{{username}}/files/test/in owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+  
+#- name: Create out folder in test directory for user files
+#  file: path=/sftpusers/{{username}}/files/test/out owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+
+#Create in and out folders in live directory for user and setup permissions   
+#- name: Create in folder in live directory for user files
+#  file: path=/sftpusers/{{username}}/files/live/in owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+  
+#- name: Create out folder in live directory for user files
+#  file: path=/sftpusers/{{username}}/files/live/out owner={{username}} group=sftpusers state=directory
+#  when: admin == "false"
+  
